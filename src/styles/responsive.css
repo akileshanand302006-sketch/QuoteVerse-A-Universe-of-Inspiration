@@ -1,0 +1,204 @@
+/*=============================================
+  QuoteVerse — Responsive Styles
+=============================================*/
+
+/* ===== Large Desktop (> 1400px) ===== */
+@media (min-width: 1400px) {
+  .quote-main-card {
+    max-width: 750px;
+  }
+}
+
+/* ===== Tablet (< 992px) ===== */
+@media (max-width: 991.98px) {
+  .navbar-brand-text {
+    font-size: 1.2rem !important;
+  }
+
+  .quote-main-card {
+    padding: 2rem !important;
+  }
+
+  .quote-text-main {
+    font-size: 1.4rem !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .mood-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+/* ===== Mobile (< 768px) ===== */
+@media (max-width: 767.98px) {
+  :root {
+    --navbar-height: 60px;
+  }
+
+  .app-content {
+    padding-top: 60px;
+  }
+
+  .section-spacing {
+    padding: 2rem 0;
+  }
+
+  .section-title {
+    font-size: 1.25rem;
+  }
+
+  /* Quote Card */
+  .quote-main-card {
+    padding: 1.5rem !important;
+    margin: 0 0.5rem;
+  }
+
+  .quote-text-main {
+    font-size: 1.2rem !important;
+  }
+
+  .quote-author-main {
+    font-size: 0.95rem !important;
+  }
+
+  /* Actions */
+  .quote-actions-row {
+    flex-direction: column;
+    gap: 0.5rem !important;
+  }
+
+  .quote-actions-row .btn-glass,
+  .quote-actions-row .btn-icon {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Categories — horizontal scroll */
+  .category-chips-container {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .category-chips-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  .category-chips-container .chip {
+    flex-shrink: 0;
+  }
+
+  /* Search */
+  .search-container {
+    width: 100% !important;
+  }
+
+  /* Stats */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
+  }
+
+  .stat-card {
+    padding: 1rem !important;
+  }
+
+  .stat-number {
+    font-size: 1.5rem !important;
+  }
+
+  /* Mood */
+  .mood-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Favorites & History Cards */
+  .quote-list-card {
+    padding: 1rem !important;
+  }
+
+  /* Footer */
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem;
+  }
+
+  /* FAB */
+  .quick-quote-fab {
+    width: 48px;
+    height: 48px;
+    bottom: 1.5rem;
+    left: 1.5rem;
+    font-size: 1.1rem;
+  }
+
+  /* Toast */
+  .toast-container {
+    right: 1rem;
+    bottom: 1.5rem;
+    left: 1rem;
+  }
+
+  /* Daily Quote */
+  .daily-quote-card {
+    padding: 1.5rem !important;
+  }
+
+  /* Modal */
+  .custom-modal-content {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+  }
+
+  /* LiveClock */
+  .live-clock-container {
+    font-size: 0.85rem !important;
+  }
+
+  /* Inspiration Mode */
+  .inspiration-mode .quote-text-inspiration {
+    font-size: 1.3rem !important;
+    padding: 0 1rem;
+  }
+
+  .inspiration-mode .inspiration-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+/* ===== Small Mobile (< 576px) ===== */
+@media (max-width: 575.98px) {
+  .quote-text-main {
+    font-size: 1.05rem !important;
+  }
+
+  .floating-mark {
+    font-size: 4rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .mood-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .btn-accent {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .about-feature-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

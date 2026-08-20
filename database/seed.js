@@ -1,0 +1,182 @@
+import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
+import { generateQuotesDataset } from './generateQuotes.js';
+
+dotenv.config();
+
+async function seedDatabase() {
+  const host = process.env.DB_HOST || 'localhost';
+  const port = process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 3306;
+  const user = process.env.DB_USER || 'root';
+  const password = process.env.DB_PASSWORD || '1234';
+  const dbName = process.env.DB_NAME || 'quoteverse';
+
+  console.log(`🔌 Connecting to MySQL server at ${host}:${port} as user '${user}'...`);
+
+  let connection;
+  try {
+    // 1. Initial connection to create database if not existing
+    connection = await mysql.createConnection({ host, port, user, password });
+
+    console.log(`📦 Ensuring database '${dbName}' exists...`);
+    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+    await connection.query(`USE \`${dbName}\`;`);
+
+    // 2. Create Quotes table with indexes
+    console.log('📋 Ensuring `quotes` table exists with proper indexes...');
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS \`quotes\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`quote_text\` TEXT NOT NULL,
+        \`author\` VARCHAR(255) NOT NULL,
+        \`category\` VARCHAR(100) NOT NULL,
+        \`mood\` VARCHAR(100) NOT NULL,
+        \`tags\` JSON NOT NULL,
+        \`source\` VARCHAR(255) DEFAULT 'Public Attribution',
+        \`language\` VARCHAR(50) DEFAULT 'English',
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX \`idx_author\` (\`author\`),
+        INDEX \`idx_category\` (\`category\`),
+        INDEX \`idx_mood\` (\`mood\`),
+        INDEX \`idx_language\` (\`language\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 3. Create Auxiliary Application Tables
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS \`users\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`full_name\` VARCHAR(100) NOT NULL,
+        \`email\` VARCHAR(150) UNIQUE NOT NULL,
+        \`password\` VARCHAR(255) NOT NULL,
+        \`avatar\` VARCHAR(500),
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS \`favorites\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`user_email\` VARCHAR(150) NOT NULL,
+        \`quote_id\` INT NOT NULL,
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY \`user_quote_fav\` (\`user_email\`, \`quote_id\`),
+        FOREIGN KEY (\`quote_id\`) REFERENCES \`quotes\`(\`id\`) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS \`history\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`user_email\` VARCHAR(150) NOT NULL,
+        \`quote_id\` INT NOT NULL,
+        \`viewed_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (\`quote_id\`) REFERENCES \`quotes\`(\`id\`) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS \`stats\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`user_email\` VARCHAR(150) UNIQUE NOT NULL,
+        \`quotes_explored\` INT DEFAULT 1,
+        \`searches\` INT DEFAULT 0,
+        \`categories_explored\` INT DEFAULT 1,
+        \`explored_categories\` JSON,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS \`challenge_scores\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`user_email\` VARCHAR(150) UNIQUE NOT NULL,
+        \`best_score\` INT DEFAULT 0,
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS \`preferences\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+        \`user_email\` VARCHAR(150) UNIQUE NOT NULL,
+        \`theme\` VARCHAR(20) DEFAULT 'dark',
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 4. Check existing count
+    const [countRows] = await connection.query('SELECT COUNT(*) as total FROM `quotes`;');
+    const existingCount = countRows[0].total;
+    console.log(`📊 Current quotes count in '${dbName}.quotes': ${existingCount}`);
+
+    if (existingCount >= 10000) {
+      console.log(`✅ Database already contains ${existingCount} quotes (>= 10,000).`);
+    } else {
+      console.log('🌱 Generating 10,000+ distinct quotes dataset...');
+      const quotes = generateQuotesDataset(10100);
+
+      console.log(`🚀 Bulk inserting ${quotes.length} quotes into MySQL '${dbName}.quotes'...`);
+      const startTime = Date.now();
+
+      // Disable foreign key checks & clear table for clean seed
+      await connection.query('SET FOREIGN_KEY_CHECKS = 0;');
+      await connection.query('TRUNCATE TABLE `quotes`;');
+      await connection.query('SET FOREIGN_KEY_CHECKS = 1;');
+
+      const BATCH_SIZE = 500;
+      let inserted = 0;
+
+      for (let i = 0; i < quotes.length; i += BATCH_SIZE) {
+        const chunk = quotes.slice(i, i + BATCH_SIZE);
+        const placeholders = chunk.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
+        const values = [];
+
+        for (const q of chunk) {
+          values.push(
+            q.quote_text,
+            q.author,
+            q.category,
+            q.mood,
+            JSON.stringify(q.tags),
+            q.source,
+            q.language
+          );
+        }
+
+        const sql = `INSERT INTO \`quotes\` (\`quote_text\`, \`author\`, \`category\`, \`mood\`, \`tags\`, \`source\`, \`language\`) VALUES ${placeholders};`;
+        await connection.query(sql, values);
+        inserted += chunk.length;
+        process.stdout.write(`\r   Progress: ${inserted} / ${quotes.length} quotes inserted (${Math.round((inserted / quotes.length) * 100)}%)`);
+      }
+
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`\n🎉 Successfully seeded ${inserted} quotes in ${elapsed}s!`);
+    }
+
+    // 5. Output Verification Stats
+    const [finalCount] = await connection.query('SELECT COUNT(*) as total FROM `quotes`;');
+    console.log(`\n📈 Final Total Quotes Count: ${finalCount[0].total}`);
+
+    const [categoryStats] = await connection.query(`
+      SELECT category, COUNT(*) as count
+      FROM \`quotes\`
+      GROUP BY category
+      ORDER BY count DESC;
+    `);
+
+    console.log('\n📚 Category Distribution:');
+    console.table(categoryStats);
+
+  } catch (error) {
+    console.error('❌ Database Seeding Error:', error);
+    process.exit(1);
+  } finally {
+    if (connection) {
+      await connection.end();
+      console.log('🔒 Database connection closed.');
+    }
+  }
+}
+
+seedDatabase();
